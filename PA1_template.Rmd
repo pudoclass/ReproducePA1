@@ -1,0 +1,95 @@
+---
+title: "PA1_template"
+author: "Pudo Class"
+date: "March 6, 2016"
+output: html_document
+---
+
+
+## Loading and preprocessing the data
+
+```{r, echo=TRUE}
+
+data <- read.table("activity.csv", sep = ",", stringsAsFactors=FALSE, header = TRUE, colClasses = c("numeric", "Date", "numeric"))
+
+
+
+
+```
+
+## What is mean total number of steps taken per day?
+```{r, echo=TRUE}
+library(dplyr)
+data <- tbl_df(data)
+stepsbyDate <- data %>% group_by(date) %>% summarize(dailySteps = sum(steps, na.rm = T))
+
+library(ggplot2)
+
+g <- qplot(dailySteps, data = stepsbyDate)
+g + labs(title = "Histogram of total steps by date") + xlab("Frequency") + ylab("Number of steps per day")
+
+#Mean of total steps taken per day: 9354.23
+mean(stepsbyDate$dailySteps)
+
+#Median of total steps taken per day : 10395
+median(stepsbyDate$dailySteps)
+```
+## What is the average daily activity pattern?
+```{r, echo=TRUE}
+avgstepsbyInterval <- data %>% group_by(interval) %>% summarize(avgIntervalSteps = mean(steps, na.rm = T))
+g<- ggplot(data = avgstepsbyInterval, aes(interval, avgIntervalSteps))
+g <- g + geom_line()
+
+g + labs(title = "Time Series plot of avg steps by interval across all days") + xlab("Interval") + ylab("Average Steps per interval")
+
+#Interval on average with maxium number of steps = 835
+avgstepsbyInterval[which.max(avgstepsbyInterval$avgIntervalSteps), "interval"]
+
+
+```
+
+
+## Imputing missing values
+```{r, echo=TRUE}
+#missing values
+x <- complete.cases(data)
+table(x)
+
+#Number of missing values = 2,304
+
+avgstepsbyDate <- data %>% group_by(date) %>% summarize(dailySteps = mean(steps, na.rm = T))
+n <- is.na(data$steps)
+
+navg <- is.na(avgstepsbyDate$dailySteps)
+avgstepsbyDate$dailySteps[navg] = 0
+
+fillData = merge(data, avgstepsbyDate, by.x = "date", by.y = "date")
+```
+
+
+## Are there differences in activity patterns between weekdays and weekends?
+```{r, echo=TRUE}
+fillstepsbyDate <- fillData %>% group_by(date) %>% summarize(dailySteps = sum(steps, na.rm = T))
+
+g <- qplot(dailySteps, data = fillstepsbyDate)
+g + labs(title = "Histogram of total steps by date - data filled") + xlab("Frequency") + ylab("Number of steps per day")
+
+#Mean of total steps taken per day: 9354.23
+mean(fillstepsbyDate$dailySteps)
+
+#Median of total steps taken per day : 10395
+median(fillstepsbyDate$dailySteps)
+
+fillData <- mutate(fillData, day = weekdays(date))
+wknd <- fillData$day %in% c("Saturday", "Sunday")
+fillData$day[wknd] = "Weekend"
+fillData$day[!wknd] = "Weekday"
+
+fillavgstepsbyWday <- fillData %>% group_by(day,interval) %>% summarize(dailySteps = mean(steps, na.rm = T))
+
+g<- ggplot(data = fillavgstepsbyWday, aes(interval, dailySteps))
+g <- g + geom_line() +facet_grid(day~.)
+
+g + labs(title = "Time Series plot of avg steps by interval - weekday, weekend") + xlab("Interval") + ylab("Average Steps per interval")
+
+```
